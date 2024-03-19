@@ -33,11 +33,16 @@
                     alt="Google">使用 Google 登入
             </a>
         </div> -->
+        <div id="qr-code-container" class="mt-4">
+            <p>掃描下方QR碼</p>
+            <p>並在您的行動設備上輸入密碼以完成登入</p>
+            <div id="qr-code" class="w-full flex items-center justify-center"></div>
+        </div>
     </div>
 </body>
 <script>
     document.getElementById('login-form').addEventListener('submit', function (e) {
-        e.preventDefault(); // 防止表單的默認提交行為
+        e.preventDefault(); // 防止錶單的默認提交行為
 
         const formData = new FormData(this);
         const data = {};
@@ -50,10 +55,15 @@
             },
             body: JSON.stringify(data)
         })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json(); // 这里我们假设服务器总是返回JSON格式的响应体
+            })
             .then(data => {
                 if (data.success) {
-                    // 登入成功，導向首頁
+                    // 登入成功，導嚮首頁
                     window.location.href = '/';
                 } else {
                     // 登入失敗，顯示alert
@@ -73,6 +83,29 @@
         password.setAttribute('type', type);
         this.classList.toggle('fa-eye-slash');
     });
+
+
+    // 使用fetch請求後端生成QR碼
+    fetch('/qrcodelogin/generate-qr')
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Network response was not ok.');
+        })
+        .then(data => {
+            if (data.success) {
+                const qrCodeDataURL = data.qrCode;
+                const img = document.createElement('img');
+                img.src = qrCodeDataURL;
+                document.getElementById('qr-code').appendChild(img);
+            } else {
+                console.error('Failed to load QR code:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
 </script>
 
 </html>
