@@ -1,46 +1,59 @@
-// /routes/qrcodelogin.js
 const express = require('express');
 const router = express.Router();
 const QRCode = require('qrcode');
-const crypto = require('crypto');
+const tokenValidator = require('../utils/tokenValidator'); // 假設validateToken函數保存在同一目錄下的validateToken.js文件中
+const tokenGenerator = require('../utils/tokenGenerator'); // 引入之前提供的token生成器
 
-const secretKey = "IamKey124"; // 用於生成哈希的密鑰
-const tokens = {}; // 存儲生成的token和時間戳
+router.get('/qr-login', (req, res) => {
+    const { token } = req.query;
 
-// 生成哈希函數
-function generateToken() {
-    const now = Date.now().toString();
-    const hash = crypto.createHmac('sha256', secretKey).update(now).digest('hex');
-    return hash;
-}
-
-// 生成免洗QR碼的路由
-router.get('/generate-qr', async (req, res) => {
-    const token = generateToken();
-    tokens[token] = Date.now(); // 存儲token和當前時間戳
-
-    try {
-        const qrCodeDataURL = await QRCode.toDataURL(token);
-        res.send({ success: true, qrCode: qrCodeDataURL, token: token });
-    } catch (error) {
-        res.status(500).send({ success: false, message: 'Failed to generate QR code.' });
-    }
-});
-
-// 驗證QR碼和密碼的路由
-router.post('/verify-qr', (req, res) => {
-    const { token, password } = req.body;
-
-    if (tokens[token] && Date.now() - tokens[token] < 5 * 60 * 1000) { // 檢查token是否存在且未過期（5分鍾有效）
-        if (password === "password123") { // 假設的密碼驗證
-            delete tokens[token]; // 驗證成功後刪除token
-            res.send({ success: true, message: 'Logged in successfully.' });
-        } else {
-            res.status(401).send({ success: false, message: 'Invalid password.' });
+    // 使用validateToken函數檢查token的有效性
+    if (tokenValidator(token)) {
+        try {
+            // 解析token並檢查是否過期，此處需要實現getUsernameByToken函數
+            const username = getUsernameByToken(token);
+            // 生成新的session或token給用戶，這裡重新使用tokenGenerator函數生成token
+            const userToken = tokenGenerator(username);
+            // 重定向到用戶入口頁面並帶上新的token
+            res.redirect(`/entry?token=${userToken}`);
+        } catch (error) {
+            // 處理錯誤，例如token過期
+            res.status(401).json({ success: false, message: error.message });
         }
     } else {
-        res.status(400).send({ success: false, message: 'Invalid or expired QR code.' });
+        // 如果token無效
+        res.status(401).json({ success: false, message: '無效的Token。' });
     }
 });
+
+// 生成登錄QR Code的路由
+router.get('/generate-qr', async (req, res) => {
+    const loginToken = tokenGenerator("QRLogin");
+    const loginUrl = `${req.protocol}://${req.get('host')}/qr-login?token=${loginToken}`;
+
+    try {
+        const qrCodeImage = await QRCode.toDataURL(loginUrl);
+        // 修改這裡，發送JSON對象而不是HTML
+        res.json({ success: true, qrCode: qrCodeImage });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: '生成QR Code失敗' });
+    }
+});
+
+
+
+// 這裡需要實現getUsernameByToken函數，解析token並檢查過期時間
+function getUsernameByToken(token) {
+    const [payloadBase64] = token.split('.');
+    const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString());
+    
+    // 檢查token是否過期
+    if (payload.exp < Math.floor(Date.now() / 1000)) {
+        throw new Error('Token已過期');
+    }
+
+    return payload.txt;
+}
 
 module.exports = router;

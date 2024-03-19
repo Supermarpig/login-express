@@ -3,7 +3,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const login = require('./routes/login');
 const logout = require('./routes/logout');
-const qrCodeLoginRoute = require('./routes/qrcodelogin');
+const qrCodeLoginRoute = require('./routes/qrCodeLogin');
 
 // 驗證token
 const validateToken = require('./utils/tokenValidator');
@@ -25,13 +25,13 @@ app.use('/', login);
 app.use('/login', function (req, res) {
     res.sendFile(path.join(__dirname, './views/login.html'));
 });
+app.use('/qrCodeLogin', qrCodeLoginRoute);
 
 // 應用token驗證中間件 - 之後的所有路由都需要通過token驗證
 app.use(checkToken);
 
 // 需要token驗證的路由
 app.use('/', logout);
-app.use('/qrCodeLogin', qrCodeLoginRoute);
 app.get('/home',function (req, res) {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
