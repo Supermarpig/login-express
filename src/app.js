@@ -1,5 +1,5 @@
 const express = require('express');
-const passportSetup = require('./config/passport-setup');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const login = require('./routes/login');
 const logout = require('./routes/logout');
@@ -7,31 +7,33 @@ const qrCodeLoginRoute = require('./routes/qrcodelogin');
 
 // 驗證token
 const validateToken = require('./utils/tokenValidator');
+const checkToken = require('./utils/checkToken');
 
 const app = express();
-
+app.use(cookieParser());
 // 設置中間件來解析請求體
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 初始化Passport
-app.use(passportSetup.initialize());
-
 // 靜態文件服務
-app.use(express.static('public'));
-// app.use('/', express.static(path.join(__dirname, '../auth')));
-
-// 路由
-app.use('/', login);
-app.use('/', logout);
-app.use('/qrCodeLogin', qrCodeLoginRoute);
-
-// 定義首頁路由
-app.get('/', function (req, res) {
+app.get('/', checkToken, (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
-app.get('/login', function (req, res) {
+
+// 路由 - 不需要token驗證的路由先註冊
+app.use('/', login);
+app.use('/login', function (req, res) {
     res.sendFile(path.join(__dirname, './views/login.html'));
+});
+
+// 應用token驗證中間件 - 之後的所有路由都需要通過token驗證
+app.use(checkToken);
+
+// 需要token驗證的路由
+app.use('/', logout);
+app.use('/qrCodeLogin', qrCodeLoginRoute);
+app.get('/home',function (req, res) {
+    res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 app.get('/entry', (req, res) => {
@@ -40,10 +42,8 @@ app.get('/entry', (req, res) => {
         // Token驗證成功
         res.cookie('token', token, { httpOnly: true });
         res.json({ success: true, message: 'Token驗證成功' });
-        res.redirect('/');
     } else {
         // Token驗證失敗
-        res.redirect('/login');
         res.json({ success: false, message: 'Token驗證失敗' });
     }
 });

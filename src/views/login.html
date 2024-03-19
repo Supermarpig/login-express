@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登入頁面</title>
+    <title>登入</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.4/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
@@ -26,13 +26,6 @@
             <button type="submit"
                 class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none">登入</button>
         </form>
-        <!-- <div class="mt-4 text-center">
-            <a href="/auth/google"
-                class="inline-block bg-white px-4 py-2 border border-gray-300 rounded-full font-bold cursor-pointer hover:border-gray-400">
-                <img src="https://img.icons8.com/color/48/000000/google-logo.png" class="w-5 inline mr-2"
-                    alt="Google">使用 Google 登入
-            </a>
-        </div> -->
         <div id="qr-code-container" class="mt-4">
             <p>掃描下方QR碼</p>
             <p>並在您的行動設備上輸入密碼以完成登入</p>
@@ -59,12 +52,12 @@
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
-                return response.json(); // 这里我们假设服务器总是返回JSON格式的响应体
+                return response.json(); // 這裏我們假設服務器總是返回JSON格式的response
             })
             .then(data => {
                 if (data.success) {
-                    // 登入成功，導嚮首頁
-                    window.location.href = '/';
+                    // 登入成功，go首頁
+                    window.location.href = '/home';
                 } else {
                     // 登入失敗，顯示alert
                     alert(data.message);

@@ -30,11 +30,4 @@ function readUsersData() {
     return JSON.parse(rawData);
 }
 
-
-// 抓到每天凌晨12點時間
-function getMidnightExpiration() {
-    const now = new Date();
-    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    return midnight.toUTCString();
-}
 module.exports = router;
