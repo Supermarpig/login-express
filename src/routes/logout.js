@@ -15,8 +15,8 @@ router.get('/logout', (req, res) => {
         'token=; HttpOnly; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
         // 'sessionId=; HttpOnly; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
     ]);
-
-    res.json({ success: true, message: '您已成功登出。' });
+    res.redirect('/login');
+    // res.json({ success: true, message: '您已成功登出。' });
 });
 
 // 手動解析cookies

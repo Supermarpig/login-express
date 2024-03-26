@@ -8,10 +8,11 @@
     <title>登入</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.4/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 
 <body class="bg-gray-200 font-sans h-screen flex justify-center items-center m-0">
-    <div class="bg-white p-6 rounded-lg shadow-lg">
+    <div class="bg-white p-6 rounded-lg shadow-lg select-none">
         <h2 class="text-2xl font-bold mb-4">登入</h2>
         <form id="login-form" action="/login" method="post">
             <div class="mb-4">
@@ -26,14 +27,21 @@
             <button type="submit"
                 class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none">登入</button>
         </form>
-        <div id="qr-code-container" class="mt-4">
-            <p>掃描下方QR碼</p>
-            <p>並在您的行動設備上輸入密碼以完成登入</p>
+        <div id="qr-code-container" class="mt-4 select-none">
+            <p>請掃描下方QR碼登入</p>
             <div id="qr-code" class="w-full flex items-center justify-center"></div>
         </div>
     </div>
 </body>
+<script src="https://unpkg.com/emojisplosion/lib/global.js"></script>
 <script>
+
+    setInterval(() => {
+        emojisplosion({
+            emojis: ["💖", "💕", "💗", "💓", "💝"],
+        });
+    }, 5000)
+
     document.getElementById('login-form').addEventListener('submit', function (e) {
         e.preventDefault(); // 防止錶單的默認提交行為
 
@@ -70,6 +78,7 @@
             });
     });
 
+    // 控製密碼顯示關閉
     document.getElementById('togglePassword').addEventListener('click', function (e) {
         const password = document.getElementById('password');
         const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -79,26 +88,47 @@
 
 
     // 使用fetch請求後端生成QR碼
-    fetch('/qrcodelogin/generate-qr')
-        .then(response => {
-            if (response.ok) {
-                return response.json();
-            }
-            throw new Error('Network response was not ok.');
-        })
-        .then(data => {
-            if (data.success) {
-                const qrCodeDataURL = data.qrCode;
-                const img = document.createElement('img');
-                img.src = qrCodeDataURL;
-                document.getElementById('qr-code').appendChild(img);
-            } else {
-                console.error('Failed to load QR code:', data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
+    window.addEventListener('load', function () {
+        fetch('/qrCodeLogin/generate-qr')
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Network response was not ok.');
+            })
+            .then(data => {
+                if (data.success) {
+                    const qrCodeDataURL = data.qrCode;
+                    const img = document.createElement('img');
+                    img.src = qrCodeDataURL;
+                    // tokenRoom = data.token;
+                    document.getElementById('qr-code').appendChild(img);
+
+                    // 當加載時，連接到socket.io並監聽登入成功的消息
+                    const socket = io('http://192.168.0.191:3000');
+                    let tokenRoom = data.token;
+                    socket.on('connect', () => {
+                        console.log('Successfully connected to the server!');
+                        // 加入特定的房間
+                        const room = tokenRoom; // 替換為您要加入的房間名
+                        socket.emit('join-room', room);
+                    });
+                    // 假設服務器會在登入成功後發送'login-success'事件
+                    socket.on('login-success', (data) => {
+                        console.log('Received login-success event', data);
+                        document.cookie = `token=${data.token}; path=/; max-age=3600`; // 設定 token, 有效期為1小時
+                        window.location.href = '/home'; // 重定嚮到首頁
+                    });
+                } else {
+                    console.error('Failed to load QR code:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    });
+
+
 </script>
 
 </html>

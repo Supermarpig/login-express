@@ -1,51 +1,57 @@
 const express = require('express');
 const router = express.Router();
 const QRCode = require('qrcode');
-const tokenValidator = require('../utils/tokenValidator'); // 假設validateToken函數保存在同一目錄下的validateToken.js文件中
-const tokenGenerator = require('../utils/tokenGenerator'); // 引入之前提供的token生成器
+const tokenValidator = require('../utils/tokenValidator');
+const tokenGenerator = require('../utils/tokenGenerator');
+const socketUtil = require('../utils/socket');
 
-router.get('/qr-login', (req, res) => {
+
+let tokenUserMap = {};
+
+function associateTokenWithUser(token, username) {
+    // console.log(`Associating token ${token} with username ${username}`);
+    tokenUserMap[token] = username;
+}
+
+function findUserByToken(token) {
+    // console.log(`Finding username for token ${token}`);
+    return tokenUserMap[token];
+}
+
+router.get('/confirm-login', async (req, res) => {
     const { token } = req.query;
-    const validationResult = validateToken(token); // 使用validateToken函數檢查令牌
-
-    if (validationResult.valid) {
-        try {
-            const username = getUsernameByToken(token); // 解析令牌獲取用戶名
-            const userToken = tokenGenerator(username); // 為用戶生成新的令牌
-            res.redirect(`/entry?token=${userToken}`); // 假設`/entry`是用戶登入後的頁麵
-        } catch (error) {
-            res.status(401).json({ success: false, message: error.message });
-        }
+    // 查找與Token關聯的用戶
+    const decodedToken = decodeURIComponent(token);
+    const username = findUserByToken(decodedToken);
+    if (username) {
+        const user = { username: username }; // 從某處獲取完整的userInfo
+        const io = socketUtil.getIO();
+        // console.log(`Emitting 'login-success' for token: ${token}`);
+        io.to(token).emit('login-success', { token: tokenGenerator(user.username) });
+        // console.log(`Emission complete`);
+        console.log({ success: true, message: '身份確認成功' });
+        res.json('驗證成功~~~耶');
     } else {
-        res.status(401).json({ success: false, message: validationResult.reason });
+        res.status(401).json({ success: false, message: '身份確認失敗' });
     }
 });
 
-// 生成登錄QR Code的路由
 router.get('/generate-qr', async (req, res) => {
-    const loginToken = tokenGenerator("user1"); // 假設"用戶1"是登入用戶的標識
-    const loginUrl = `${req.protocol}://${req.get('host')}/qr-login?token=${loginToken}`;
+    const loginAttemptToken = tokenGenerator('QRLoginAttempt');
+    // const loginUrl = `${req.protocol}://${req.get('host')}/qr-confirm-login?token=${loginAttemptToken}`;
+
+    const username = "user1";
+    associateTokenWithUser(loginAttemptToken, username);
+    const encodedToken = encodeURIComponent(loginAttemptToken);
+    const loginUrl = `${req.protocol}://192.168.0.191:3000/qrCodeLogin/confirm-login?token=${encodedToken}`;
 
     try {
         const qrCodeImage = await QRCode.toDataURL(loginUrl);
-        res.json({ success: true, qrCode: qrCodeImage });
+        res.json({ success: true, qrCode: qrCodeImage, token: loginAttemptToken });
     } catch (err) {
         console.error(err);
         res.status(500).json({ success: false, message: '生成QR Code失敗' });
     }
 });
-
-// 這裡需要實現getUsernameByToken函數，解析token並檢查過期時間
-function getUsernameByToken(token) {
-    const [payloadBase64] = token.split('.');
-    const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString());
-    
-    // 檢查token是否過期
-    if (payload.exp < Math.floor(Date.now() / 1000)) {
-        throw new Error('Token已過期');
-    }
-
-    return payload.txt;
-}
 
 module.exports = router;

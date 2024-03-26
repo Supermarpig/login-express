@@ -1,15 +1,23 @@
 const express = require('express');
+const http = require('http');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const login = require('./routes/login');
 const logout = require('./routes/logout');
 const qrCodeLoginRoute = require('./routes/qrCodeLogin');
 
+const socketUtil = require('./utils/socket');
+
 // 驗證token
 const validateToken = require('./utils/tokenValidator');
 const checkToken = require('./utils/checkToken');
 
 const app = express();
+const server = http.createServer(app)
+
+// 初始化socket.io並將http服務器實例傳給它
+socketUtil.init(server);
+
 app.use(cookieParser());
 // 設置中間件來解析請求體
 app.use(express.json());
@@ -36,6 +44,15 @@ app.get('/home',function (req, res) {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+app.get('/page1',function (req, res) {
+    res.sendFile(path.join(__dirname, './views/page1.html'));
+});
+app.get('/page2',function (req, res) {
+    res.sendFile(path.join(__dirname, './views/page2.html'));
+});
+
+
+
 app.get('/entry', (req, res) => {
     const { token } = req.query;
     if (validateToken(token)) {
@@ -49,8 +66,12 @@ app.get('/entry', (req, res) => {
 });
 
 
+app.get('/socket.io/socket.io.js', (req, res) => {
+    res.sendFile(path.resolve('./node_modules/socket.io/client-dist/socket.io.js'));
+  });
+
 // 啟動伺服器
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+server.listen(PORT, () => {
+    console.log(`Server is running on port http://localhost:${PORT}`);
 });
