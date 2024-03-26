@@ -1,6 +1,6 @@
 
 const crypto = require('crypto')
-const secretKey = 'Leyan'
+const secretKey = 'IamKey'
 
 const tokenGenerator = (text) => {
 

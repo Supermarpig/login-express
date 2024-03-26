@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const secretKey = 'Leyan';
+const secretKey = 'IamKey';
 
 // Token驗證函數，加入了過期時間檢查
 const validateToken = (token) => {
